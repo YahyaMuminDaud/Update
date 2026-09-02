@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { Avatar } from "@/components/Avatar";
 import { GoogleIcon, LogoutIcon, PencilIcon, SpinnerIcon } from "@/components/icons";
 
 export function SignInButton() {
@@ -17,7 +16,6 @@ export function SignInButton() {
     return (
       <div className="flex items-center gap-3">
         <div className="hidden sm:flex items-center gap-2">
-          <Avatar name={username ?? user.displayName ?? "You"} photoUrl={user.photoURL} size={32} />
           <span className="text-sm font-medium text-foreground">
             {username ?? user.displayName}
           </span>
@@ -65,7 +63,7 @@ export function SignInButton() {
         }
       }}
       disabled={busy}
-      className="cursor-pointer inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-hover transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed"
+      className="cursor-pointer inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-border/40 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {busy ? (
         <SpinnerIcon className="h-4 w-4" />

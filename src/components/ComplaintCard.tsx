@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { Avatar } from "@/components/Avatar";
 import { timeAgo } from "@/lib/time";
 import { COMPLAINT_MAX_LENGTH } from "@/lib/validation";
 import type { ComplaintDTO } from "@/lib/types";
@@ -56,7 +55,6 @@ export function ComplaintCard({
   return (
     <article className="rounded-xl border border-border bg-card p-4 transition-colors duration-200">
       <div className="flex gap-3">
-        <Avatar name={complaint.authorName} photoUrl={complaint.authorPhoto} size={40} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-baseline gap-2">

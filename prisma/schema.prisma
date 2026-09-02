@@ -15,15 +15,44 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
-model Complaint {
-  id          String   @id @default(cuid())
-  body        String
-  authorId    String
-  authorName  String
-  authorPhoto String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+enum GroupRole {
+  OWNER
+  MEMBER
+}
 
-  @@index([createdAt])
+model Group {
+  id         String        @id @default(cuid())
+  name       String
+  inviteCode String        @unique
+  createdAt  DateTime      @default(now())
+  members    GroupMember[]
+  complaints Complaint[]
+}
+
+model GroupMember {
+  id       String    @id @default(cuid())
+  groupId  String
+  userId   String
+  role     GroupRole @default(MEMBER)
+  joinedAt DateTime  @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+}
+
+model Complaint {
+  id         String   @id @default(cuid())
+  body       String
+  authorId   String
+  authorName String
+  groupId    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
   @@index([authorId])
 }

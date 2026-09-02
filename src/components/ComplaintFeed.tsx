@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { ComposeBox } from "@/components/ComposeBox";
 import { ComplaintCard } from "@/components/ComplaintCard";
 import { EmptyState } from "@/components/EmptyState";
+import { SpinnerIcon } from "@/components/icons";
 import type { ComplaintDTO } from "@/lib/types";
 
 async function readError(res: Response): Promise<string> {
@@ -16,9 +17,9 @@ async function readError(res: Response): Promise<string> {
   }
 }
 
-export function ComplaintFeed({ initialComplaints }: { initialComplaints: ComplaintDTO[] }) {
+export function ComplaintFeed({ groupId, onForbidden }: { groupId: string; onForbidden?: () => void }) {
   const { getToken } = useAuth();
-  const [complaints, setComplaints] = useState(initialComplaints);
+  const [complaints, setComplaints] = useState<ComplaintDTO[] | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
 
   async function authedFetch(input: string, init: RequestInit = {}) {
@@ -34,14 +35,36 @@ export function ComplaintFeed({ initialComplaints }: { initialComplaints: Compla
     });
   }
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await authedFetch(`/api/groups/${groupId}/complaints`);
+        if (res.status === 403 || res.status === 404) {
+          onForbidden?.();
+          return;
+        }
+        if (!res.ok) throw new Error(await readError(res));
+        const data = await res.json();
+        if (!cancelled) setComplaints(data.complaints as ComplaintDTO[]);
+      } catch (err) {
+        if (!cancelled) setBanner(err instanceof Error ? err.message : "Couldn't load the feed");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupId]);
+
   async function handlePost(body: string) {
-    const res = await authedFetch("/api/complaints", {
+    const res = await authedFetch(`/api/groups/${groupId}/complaints`, {
       method: "POST",
       body: JSON.stringify({ body }),
     });
     if (!res.ok) throw new Error(await readError(res));
     const { complaint } = (await res.json()) as { complaint: ComplaintDTO };
-    setComplaints((prev) => [complaint, ...prev]);
+    setComplaints((prev) => [complaint, ...(prev ?? [])]);
   }
 
   async function handleUpdate(id: string, body: string) {
@@ -51,12 +74,12 @@ export function ComplaintFeed({ initialComplaints }: { initialComplaints: Compla
     });
     if (!res.ok) throw new Error(await readError(res));
     const { complaint } = (await res.json()) as { complaint: ComplaintDTO };
-    setComplaints((prev) => prev.map((c) => (c.id === id ? complaint : c)));
+    setComplaints((prev) => prev?.map((c) => (c.id === id ? complaint : c)) ?? prev);
   }
 
   async function handleDelete(id: string) {
     const previous = complaints;
-    setComplaints((prev) => prev.filter((c) => c.id !== id));
+    setComplaints((prev) => prev?.filter((c) => c.id !== id) ?? prev);
     try {
       const res = await authedFetch(`/api/complaints/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(await readError(res));
@@ -86,7 +109,11 @@ export function ComplaintFeed({ initialComplaints }: { initialComplaints: Compla
         </div>
       )}
 
-      {complaints.length === 0 ? (
+      {complaints === null ? (
+        <div className="flex justify-center py-8">
+          <SpinnerIcon className="h-6 w-6 text-muted" />
+        </div>
+      ) : complaints.length === 0 ? (
         <EmptyState />
       ) : (
         <div className="space-y-3">

@@ -9,18 +9,3 @@ export function EmptyState() {
     </div>
   );
 }
-
-export function ComplaintSkeleton() {
-  return (
-    <div className="rounded-xl border border-border bg-card p-4" aria-hidden="true">
-      <div className="flex gap-3">
-        <div className="h-10 w-10 shrink-0 rounded-full bg-border animate-pulse" />
-        <div className="flex-1 space-y-2">
-          <div className="h-3 w-32 rounded bg-border animate-pulse" />
-          <div className="h-3 w-full rounded bg-border animate-pulse" />
-          <div className="h-3 w-2/3 rounded bg-border animate-pulse" />
-        </div>
-      </div>
-    </div>
-  );
-}

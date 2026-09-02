@@ -2,12 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { Avatar } from "@/components/Avatar";
 import { COMPLAINT_MAX_LENGTH } from "@/lib/validation";
 import { MegaphoneIcon, SpinnerIcon } from "@/components/icons";
 
 export function ComposeBox({ onPost }: { onPost: (body: string) => Promise<void> }) {
-  const { user, loading, username, usernameChecked, signInWithGoogle } = useAuth();
+  const { user, loading, usernameChecked, signInWithGoogle } = useAuth();
   const [value, setValue] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +55,6 @@ export function ComposeBox({ onPost }: { onPost: (body: string) => Promise<void>
       className="rounded-xl border border-border bg-card p-4 focus-within:ring-2 focus-within:ring-ring transition-shadow duration-200"
     >
       <div className="flex gap-3">
-        <Avatar name={username ?? user.displayName ?? "You"} photoUrl={user.photoURL} size={40} />
         <div className="flex-1">
           <label htmlFor="complaint-body" className="sr-only">
             What&apos;s bugging you?

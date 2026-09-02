@@ -31,3 +31,28 @@ export function parseUsername(input: unknown): string {
   }
   return trimmed;
 }
+
+export const GROUP_NAME_MIN_LENGTH = 3;
+export const GROUP_NAME_MAX_LENGTH = 30;
+
+export function parseGroupName(input: unknown): string {
+  if (typeof input !== "string") {
+    throw new Error("Group name must be a string");
+  }
+  const trimmed = input.trim();
+  if (trimmed.length < GROUP_NAME_MIN_LENGTH || trimmed.length > GROUP_NAME_MAX_LENGTH) {
+    throw new Error(`Group name must be ${GROUP_NAME_MIN_LENGTH}-${GROUP_NAME_MAX_LENGTH} characters`);
+  }
+  return trimmed;
+}
+
+export function parseInviteCode(input: unknown): string {
+  if (typeof input !== "string") {
+    throw new Error("Invite code must be a string");
+  }
+  const trimmed = input.trim().toUpperCase();
+  if (trimmed.length === 0) {
+    throw new Error("Invite code can't be empty");
+  }
+  return trimmed;
+}

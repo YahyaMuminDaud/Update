@@ -10,7 +10,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Complainathon — Say what's bugging you",
-  description: "A public feed of short complaints, sorted by most recent.",
+  description: "Small group feeds for short complaints and updates, sorted by most recent.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -3,7 +3,20 @@ export type ComplaintDTO = {
   body: string;
   authorId: string;
   authorName: string;
-  authorPhoto: string | null;
+  groupId: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type GroupDTO = {
+  id: string;
+  name: string;
+  role: "OWNER" | "MEMBER";
+  inviteCode?: string | null;
+};
+
+export type GroupMemberDTO = {
+  userId: string;
+  username: string;
+  role: "OWNER" | "MEMBER";
 };

@@ -1,19 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser, AuthError } from "@/lib/auth-server";
+import { requireMembership, GroupAccessError } from "@/lib/groups";
 import { parseComplaintBody } from "@/lib/validation";
 
-export async function GET() {
-  const complaints = await prisma.complaint.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
-  return NextResponse.json({ complaints });
-}
+type RouteParams = { params: Promise<{ id: string }> };
 
-export async function POST(req: NextRequest) {
+export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireUser(req);
+    const { id } = await params;
+
+    await requireMembership(id, user.uid);
+
+    const complaints = await prisma.complaint.findMany({
+      where: { groupId: id },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+    return NextResponse.json({ complaints });
+  } catch (error) {
+    if (error instanceof AuthError || error instanceof GroupAccessError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+}
+
+export async function POST(req: NextRequest, { params }: RouteParams) {
+  try {
+    const user = await requireUser(req);
+    const { id } = await params;
+
+    await requireMembership(id, user.uid);
+
     const profile = await prisma.user.findUnique({ where: { id: user.uid } });
     if (!profile) {
       return NextResponse.json({ error: "Set a username before posting" }, { status: 409 });
@@ -27,13 +47,13 @@ export async function POST(req: NextRequest) {
         body,
         authorId: user.uid,
         authorName: profile.username,
-        authorPhoto: user.picture,
+        groupId: id,
       },
     });
 
     return NextResponse.json({ complaint }, { status: 201 });
   } catch (error) {
-    if (error instanceof AuthError) {
+    if (error instanceof AuthError || error instanceof GroupAccessError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     const message = error instanceof Error ? error.message : "Invalid request";
