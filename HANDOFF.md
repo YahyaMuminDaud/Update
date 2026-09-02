@@ -7,14 +7,10 @@ architecture/setup/deploy docs (that file is accurate for local dev, but see
 
 ## Status right now
 
-**⚠️ Live production site is currently broken.** See "v3: group-scoped
-redesign" below — the Supabase schema has been migrated to the new
-group-based model, but the code deployed on Vercel is still the old
-single-public-feed code, which queries columns (`Complaint.authorPhoto`)
-and expects a shape (no `groupId`) that no longer exist. Every
-complaint-related request on https://complainathon.vercel.app will 500
-until the new code is deployed. **Run `npx vercel --prod` (after building
-locally to confirm it's clean) before leaving this in a broken state.**
+**Live in production, running the v3 group-scoped redesign:**
+https://complainathon.vercel.app — committed (`94b3de1`) and deployed via
+`npx vercel --prod --scope scrap5` (see the `--scope` note under
+"Deployment reality" below, plain `--prod` failed with "Not authorized").
 
 Git repo, Vercel deploy, the v2 username feature, and the v3 group redesign
 all happened across sessions, in this order:
@@ -123,9 +119,9 @@ Verified post-push via a one-off Node script querying
 `prisma.group.count()` / `prisma.groupMember.count()` /
 `prisma.complaint.count()` — all reachable, complaints at 0.
 
-**Not yet done:** `git add`/commit (nothing from this session is
-committed), `npx vercel --prod` (production is running stale code against
-the new DB shape — see the warning at the top of this file).
+**Done:** committed (`94b3de1`) and deployed to production
+(`npx vercel --prod --scope scrap5`) — see "Deployment reality" above for
+the `--scope` gotcha hit along the way.
 
 ## Deployment reality — read before touching prod
 
@@ -135,8 +131,16 @@ Pushing commits to git (there's no remote configured yet anyway) does
 **nothing** to the live site. To ship a change:
 
 ```bash
-npx vercel --prod
+npx vercel --prod --scope scrap5
 ```
+
+**Bare `npx vercel --prod` (no `--scope`) failed with `"Not authorized"`**
+during the v3 deploy, even though `npx vercel whoami` showed a valid
+logged-in session and `.vercel/project.json` was present and correct.
+Adding `--scope scrap5` fixed it immediately. Cause unconfirmed (CLI
+default-scope resolution behaving differently across sessions/versions?)
+— just always pass `--scope scrap5` explicitly rather than debugging it
+again.
 
 Vercel project: `scrap5/complainathon` (scope `scrap5`, the account's
 default team). Vercel CLI is not installed globally — everything runs via
@@ -260,19 +264,16 @@ breaks.
 
 ## What's next (where this session stopped)
 
-1. **Ship it**: commit the v3 changes, then `npx vercel --prod` — production
-   is currently broken against the migrated DB (see the warning at the top
-   of this file). This is the most urgent item.
-2. **More mockups may be coming.** The user sent login + group-picker
+1. **More mockups may be coming.** The user sent login + group-picker
    screens (1 through 5 groups) inline as images and described the feed/
    settings screens verbally ("assume a similar design" to what's already
    built) rather than mocking every screen. If more images show up, compare
    against what's built (`GroupHeader.tsx`, `GroupSettings.tsx`,
    `CreateGroupForm.tsx`, `JoinGroupForm.tsx`) rather than assuming a clean
    slate.
-3. **App naming** — mockups showed a placeholder "Name" title; nothing
+2. **App naming** — mockups showed a placeholder "Name" title; nothing
    decided yet. Code still says "Complainathon" throughout.
-4. Confirmed this session (no longer open): `complainathon.vercel.app` **is**
+3. Confirmed this session (no longer open): `complainathon.vercel.app` **is**
    in Firebase's authorized domains list.
 
 ## Quick resume checklist
