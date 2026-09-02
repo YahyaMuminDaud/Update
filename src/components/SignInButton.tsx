@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Avatar } from "@/components/Avatar";
-import { GoogleIcon, LogoutIcon, SpinnerIcon } from "@/components/icons";
+import { GoogleIcon, LogoutIcon, PencilIcon, SpinnerIcon } from "@/components/icons";
 
 export function SignInButton() {
-  const { user, loading, signInWithGoogle, signOut } = useAuth();
+  const { user, loading, username, signInWithGoogle, signOut, editUsername } = useAuth();
   const [busy, setBusy] = useState(false);
 
   if (loading) {
@@ -17,8 +17,20 @@ export function SignInButton() {
     return (
       <div className="flex items-center gap-3">
         <div className="hidden sm:flex items-center gap-2">
-          <Avatar name={user.displayName ?? "You"} photoUrl={user.photoURL} size={32} />
-          <span className="text-sm font-medium text-foreground">{user.displayName}</span>
+          <Avatar name={username ?? user.displayName ?? "You"} photoUrl={user.photoURL} size={32} />
+          <span className="text-sm font-medium text-foreground">
+            {username ?? user.displayName}
+          </span>
+          {username && (
+            <button
+              type="button"
+              onClick={editUsername}
+              aria-label="Change username"
+              className="cursor-pointer rounded-lg p-1 text-muted hover:bg-border/40 hover:text-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <PencilIcon className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
         <button
           type="button"

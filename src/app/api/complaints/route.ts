@@ -14,6 +14,11 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser(req);
+    const profile = await prisma.user.findUnique({ where: { id: user.uid } });
+    if (!profile) {
+      return NextResponse.json({ error: "Set a username before posting" }, { status: 409 });
+    }
+
     const payload = await req.json();
     const body = parseComplaintBody(payload?.body);
 
@@ -21,7 +26,7 @@ export async function POST(req: NextRequest) {
       data: {
         body,
         authorId: user.uid,
-        authorName: user.name,
+        authorName: profile.username,
         authorPhoto: user.picture,
       },
     });
