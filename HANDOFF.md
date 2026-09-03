@@ -8,13 +8,24 @@ updated).
 
 ## Status right now
 
-**Live at https://complainathon.vercel.app**, latest commit `133683c`,
-deployed and confirmed working. The app is a group-scoped complaint feed
-("Twitter x Locket," per the user): sign in with Google, pick a username
-on first sign-in, then join or create up to 5 groups by invite code. Each
-group has its own private feed — same compose/edit/delete UX per post,
-just scoped to the group. No group discovery/browsing; joining requires
-knowing the invite code.
+**Live at https://complainathon.vercel.app**, latest commit `dc5b948`,
+deployed. The app is a group-scoped complaint feed ("Twitter x Locket,"
+per the user): sign in with Google, pick a username on first sign-in,
+then join or create up to 5 groups by invite code. Each group has its own
+private feed — same compose/edit/delete UX per post, just scoped to the
+group. No group discovery/browsing; joining requires knowing the invite
+code.
+
+**Not yet confirmed working end-to-end**: Google sign-in on iPhone was
+broken (see "Google sign-in on iOS Safari" below) and was just switched
+to a different sign-in mechanism (Google Identity Services) this session.
+The fix is deployed and the required Google Cloud Console origin was just
+added, but Google's own docs warn origin changes can take "5 minutes to a
+few hours" to propagate — **this has not yet been confirmed working on a
+real iPhone**. If you're picking this up fresh, that's the first thing to
+verify before doing anything else; if it's still broken after a few
+hours, re-check the exact origin value saved in Google Cloud Console
+(see gotcha #10 below).
 
 App naming is still unresolved — the Figma mockups show a literal "Name"
 placeholder for the app title. Code/branding still says "Complainathon"
@@ -90,6 +101,62 @@ similar design") rather than mocking every one, so what's built
 `JoinGroupForm.tsx`) is a best-effort interpretation, not a pixel-checked
 match.
 
+## Google sign-in on iOS Safari — a whole saga, read before touching auth
+
+Google sign-in worked fine on desktop but was completely broken on
+iPhone. What was tried, in order, and why each attempt failed:
+
+1. **`signInWithPopup` (original v1-v3 code)**: failed on iPhone with
+   Firebase's own error, `"Unable to process request due to missing
+   initial state."`
+2. **Switched to `signInWithRedirect` on mobile** (desktop kept the
+   popup): still failed, but silently — user completed the Google
+   sign-in screen, got redirected back, and the page just looked
+   unchanged, no error anywhere.
+3. **Added a `pageshow`/`event.persisted` listener to force-reload on
+   Safari's back-forward-cache restore** (a plausible cause of "redirect
+   completes but the page never re-runs its mount effect"): didn't fix
+   it.
+4. **Added visible on-screen error reporting** (previously errors only
+   went to `console.error`, invisible without plugging the phone into a
+   Mac for remote debugging): still showed nothing, even after the user
+   **fully reset their iPhone** (ruling out every device-state theory —
+   cached JS, cookies, Private Browsing residue, ITP's learned per-site
+   classification).
+
+**Root cause**, once a device reset didn't fix it: Firebase's sign-in
+flow (both popup and redirect — they share this underlying mechanism)
+bounces through an invisible intermediate hop with zero user interaction:
+`your app → <project>.firebaseapp.com/__/auth/handler → accounts.google.com
+→ firebaseapp.com again → your app`. Safari has a built-in, stateless
+anti-"bounce tracking" protection that detects exactly this pattern — a
+site writing storage then immediately (via JS, not a real link click)
+redirecting through another domain with no interaction on it — and wipes
+that storage right then, before the flow ever reaches Google. This is
+deterministic and device-independent (not a setting, not cache), which is
+why every attempt above failed identically and why the phone reset didn't
+help.
+
+**Fix (this session, commit `dc5b948`)**: replaced Firebase's own
+popup/redirect entirely with **Google Identity Services** (`src/lib/
+google-identity.ts`) — loads `https://accounts.google.com/gsi/client`,
+calls `google.accounts.oauth2.initTokenClient(...).requestAccessToken()`
+to open a *real* popup straight to `accounts.google.com` (no
+`firebaseapp.com` bounce at all), then exchanges the resulting access
+token for a Firebase credential via `GoogleAuthProvider.credential(null,
+accessToken)` + `signInWithCredential`. `AuthProvider.tsx` calls
+`preloadGoogleIdentity()` on mount so the script is already loaded by the
+time the user clicks the button — `requestAccessToken()` must run
+**synchronously inside the click handler's call stack** or Safari's
+popup blocker rejects it; an `await` before it (e.g. lazy-loading the
+script on click) breaks that chain.
+
+This required a new env var, **`NEXT_PUBLIC_GOOGLE_CLIENT_ID`** — the Web
+client ID Firebase auto-provisions for the Google sign-in provider (find
+it at Firebase Console → Authentication → Sign-in method → Google → Web
+SDK configuration). Already added to `.env` and to Vercel across all
+three environments this session.
+
 ## Deployment reality — read before touching prod
 
 This project is **not connected to GitHub for auto-deploy**. It was
@@ -154,15 +221,21 @@ these off rather than assuming they'll run automatically.
   per-request in API routes; ownership (`authorId === token.uid`) is
   enforced **server-side**, the UI hiding edit/delete buttons is cosmetic
   only.
+- **Google sign-in itself goes through Google Identity Services, not
+  Firebase's `signInWithPopup`/`signInWithRedirect`** — see "Google
+  sign-in on iOS Safari" above for why. `src/lib/google-identity.ts`
+  handles the GIS script + token client; `AuthProvider.tsx` exchanges the
+  access token for a Firebase credential via `signInWithCredential`.
 
 ## `.env` is already populated and working
 
 Supabase (`DATABASE_URL`, `DIRECT_URL`) and Firebase
 (`NEXT_PUBLIC_FIREBASE_*`, `FIREBASE_SERVICE_ACCOUNT_BASE64`) for the live
-"complainathon" projects on both services, both free tier. The same
-values are mirrored into Vercel's env vars (see "Deployment reality").
-Don't need to redo any account setup in `README.md` unless something
-breaks.
+"complainathon" projects on both services, both free tier, plus
+`NEXT_PUBLIC_GOOGLE_CLIENT_ID` (Google Identity Services, see "Google
+sign-in on iOS Safari" above). The same values are mirrored into Vercel's
+env vars (see "Deployment reality"). Don't need to redo any account setup
+in `README.md` unless something breaks.
 
 ## Gotchas already hit once — don't repeat
 
@@ -209,24 +282,51 @@ breaks.
    — the agent's auto-mode classifier blocks both `npx prisma db push`
    against the real DB and writes to `.claude/settings.local.json`. Don't
    assume either will run automatically; hand them to the user.
+9. **Firebase's `signInWithPopup`/`signInWithRedirect` are both
+   deterministically broken on iOS Safari** — see "Google sign-in on iOS
+   Safari" above. Don't try switching between them again as a fix; the
+   failure is structural (Safari's anti-bounce-tracking protection wiping
+   storage during Firebase's invisible `firebaseapp.com` hop), not a
+   config or caching issue. The fix in place is Google Identity Services
+   instead.
+10. **Google Identity Services needs its own origin allowlist, separate
+    from Firebase's "Authorized domains."** Google Cloud Console → APIs &
+    Services → Credentials → the OAuth 2.0 Client ID (matches
+    `NEXT_PUBLIC_GOOGLE_CLIENT_ID`) → "Authorized JavaScript origins" must
+    list `https://complainathon.vercel.app` exactly (no trailing slash) or
+    GIS's popup fails with `Error 400: origin_mismatch`. Google's own UI
+    warns changes can take "5 minutes to a few hours" to propagate — don't
+    assume a fix is broken just because it doesn't work immediately after
+    saving the origin.
+11. **The Google Cloud Console project picker can default to the wrong
+    Google account/org** and simply not list the `complainathon` project
+    at all (it showed an unrelated "n8n" project instead once). Every
+    Firebase project is backed by a GCP project with the same ID, so
+    jumping straight to
+    `https://console.cloud.google.com/apis/credentials?project=complainathon`
+    bypasses the picker; if that 404s or asks to sign in, you're logged
+    into Cloud Console with the wrong Google account (should be
+    `yahyamdaud21@gmail.com`).
 
 ## What's next
 
-Nothing specific is queued. Open threads to pick up if relevant:
-
-1. More Figma mockups may arrive for screens that were only described
+1. **Confirm Google sign-in actually works on a real iPhone now** — this
+   is the top priority, see "Status right now" above. Not yet confirmed
+   as of end of session; the fix and the Google Cloud Console origin were
+   both just put in place and may need time to propagate.
+2. More Figma mockups may arrive for screens that were only described
    verbally so far (feed, settings, create, join) — compare against what's
    built rather than assuming a clean slate.
-2. App naming — still just "Complainathon" / mockup placeholder "Name",
+3. App naming — still just "Complainathon" / mockup placeholder "Name",
    nothing decided.
-3. New features beyond the group system — not discussed yet; ask before
+4. New features beyond the group system — not discussed yet; ask before
    planning anything.
 
 ## Quick resume checklist
 
 - `npm run dev` should just work (`.env` is already populated).
 - After any change: `npx tsc --noEmit`, `npm run lint`, `npm run build` —
-  all three are clean as of `133683c`; keep them that way.
+  all three are clean as of `dc5b948`; keep them that way.
 - To ship a change to production: `npx vercel --prod --scope scrap5` (see
   "Deployment reality" — no git-push-to-deploy pipeline exists).
 - If you change `prisma/schema.prisma`, run `npx prisma db push` against
