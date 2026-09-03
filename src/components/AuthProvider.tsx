@@ -29,6 +29,7 @@ type AuthContextValue = {
   getToken: () => Promise<string | null>;
   applyUsername: (username: string) => void;
   editUsername: () => void;
+  authError: string | null;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -50,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [username, setUsername] = useState<string | null>(null);
   const [usernameChecked, setUsernameChecked] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (nextUser) => {
@@ -58,9 +60,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     // Surfaces errors from a completed redirect sign-in (e.g. account
     // conflicts); onAuthStateChanged above already picks up success.
-    getRedirectResult(getFirebaseAuth()).catch((err) => {
-      console.error("Google redirect sign-in failed", err);
-    });
+    // document.referrer survives even when the storage Firebase relies on
+    // to correlate the redirect gets wiped (e.g. Safari's anti-bounce-
+    // tracking storage purge, or in-memory-only persistence): if we clearly
+    // just came back from Google but got no user and no thrown error, that
+    // silent-failure mode is exactly what's happening.
+    const cameFromGoogle = /google\.com|firebaseapp\.com/.test(document.referrer);
+    getRedirectResult(getFirebaseAuth())
+      .then((result) => {
+        if (cameFromGoogle && !result) {
+          setAuthError(
+            "Redirected back from Google with no sign-in result. Safari likely blocked the storage this flow needs (Private Browsing, or Settings > Safari > Block All Cookies)."
+          );
+        }
+      })
+      .catch((err) => {
+        setAuthError(err instanceof Error ? `${err.name}: ${err.message}` : String(err));
+      });
 
     // Safari restores the page from its back-forward cache when Google
     // redirects back to the same URL, instead of doing a real reload — so
@@ -78,11 +94,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    if (isMobileBrowser()) {
-      await signInWithRedirect(getFirebaseAuth(), googleProvider);
-      return;
+    setAuthError(null);
+    try {
+      if (isMobileBrowser()) {
+        await signInWithRedirect(getFirebaseAuth(), googleProvider);
+        return;
+      }
+      await signInWithPopup(getFirebaseAuth(), googleProvider);
+    } catch (err) {
+      setAuthError(err instanceof Error ? `${err.name}: ${err.message}` : String(err));
+      throw err;
     }
-    await signInWithPopup(getFirebaseAuth(), googleProvider);
   }, []);
 
   const signOut = useCallback(async () => {
@@ -144,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         getToken,
         applyUsername,
         editUsername,
+        authError,
       }}
     >
       {children}

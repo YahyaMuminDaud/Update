@@ -7,7 +7,7 @@ import { SignInButton } from "@/components/SignInButton";
 import { SpinnerIcon } from "@/components/icons";
 
 export default function Home() {
-  const { user, loading, username, usernameChecked } = useAuth();
+  const { user, loading, username, usernameChecked, authError } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -24,6 +24,12 @@ export default function Home() {
         <SpinnerIcon className="h-6 w-6 text-muted" />
       ) : (
         <SignInButton />
+      )}
+
+      {authError && (
+        <p role="alert" className="max-w-sm text-center text-sm text-danger">
+          {authError}
+        </p>
       )}
     </main>
   );
