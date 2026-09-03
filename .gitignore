@@ -44,3 +44,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# personal notes, not project docs
+human.md
