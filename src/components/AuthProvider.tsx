@@ -61,7 +61,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getRedirectResult(getFirebaseAuth()).catch((err) => {
       console.error("Google redirect sign-in failed", err);
     });
-    return unsubscribe;
+
+    // Safari restores the page from its back-forward cache when Google
+    // redirects back to the same URL, instead of doing a real reload — so
+    // none of the above ever re-runs and the completed sign-in is never
+    // noticed. Force a real reload when that happens.
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) window.location.reload();
+    };
+    window.addEventListener("pageshow", onPageShow);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener("pageshow", onPageShow);
+    };
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
