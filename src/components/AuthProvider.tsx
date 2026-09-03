@@ -11,6 +11,8 @@ import {
 import {
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
@@ -31,6 +33,17 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// Popup-based sign-in relies on storage shared between the opener window
+// and the Firebase authDomain popup/iframe. iOS Safari's cross-site
+// tracking prevention partitions that storage away from the app's own
+// origin, which surfaces as "missing initial state" errors on iPhone.
+// Redirect-based sign-in only needs single-window storage, so it's the
+// reliable path on mobile; desktop keeps the popup for a nicer UX.
+function isMobileBrowser() {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,10 +56,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(nextUser);
       setLoading(false);
     });
+    // Surfaces errors from a completed redirect sign-in (e.g. account
+    // conflicts); onAuthStateChanged above already picks up success.
+    getRedirectResult(getFirebaseAuth()).catch((err) => {
+      console.error("Google redirect sign-in failed", err);
+    });
     return unsubscribe;
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
+    if (isMobileBrowser()) {
+      await signInWithRedirect(getFirebaseAuth(), googleProvider);
+      return;
+    }
     await signInWithPopup(getFirebaseAuth(), googleProvider);
   }, []);
 
