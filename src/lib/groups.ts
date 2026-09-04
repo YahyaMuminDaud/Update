@@ -28,3 +28,21 @@ export async function requireOwner(groupId: string, userId: string) {
   }
   return membership;
 }
+
+export async function requireCanPost(groupId: string, userId: string) {
+  const membership = await requireMembership(groupId, userId);
+  if (membership.role === "OWNER" || membership.role === "ANNOUNCER") {
+    return membership;
+  }
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    select: { announceOnly: true },
+  });
+  if (group?.announceOnly) {
+    throw new GroupAccessError(
+      "Only the owner and announcers can post while announcement mode is on",
+      403,
+    );
+  }
+  return membership;
+}

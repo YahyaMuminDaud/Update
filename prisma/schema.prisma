@@ -17,16 +17,18 @@ model User {
 
 enum GroupRole {
   OWNER
+  ANNOUNCER
   MEMBER
 }
 
 model Group {
-  id         String        @id @default(cuid())
-  name       String
-  inviteCode String        @unique
-  createdAt  DateTime      @default(now())
-  members    GroupMember[]
-  complaints Complaint[]
+  id           String        @id @default(cuid())
+  name         String
+  inviteCode   String        @unique
+  createdAt    DateTime      @default(now())
+  announceOnly Boolean       @default(false)
+  members      GroupMember[]
+  complaints   Complaint[]
 }
 
 model GroupMember {

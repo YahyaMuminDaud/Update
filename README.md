@@ -1,4 +1,4 @@
-# Complainathon
+# Update
 
 A public feed of short complaints, sorted by most recent. Anyone can read the
 feed; signing in with Google lets you post, and you can only edit or delete

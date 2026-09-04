@@ -25,7 +25,7 @@ export default function GroupsPage() {
         <SignInButton />
       </header>
       <main className="flex flex-1 flex-col items-center justify-center gap-8 px-4">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Complainathon</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Update</h1>
 
         {ready ? <GroupPicker /> : <SpinnerIcon className="h-6 w-6 text-muted" />}
       </main>

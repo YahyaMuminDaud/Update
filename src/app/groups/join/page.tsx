@@ -28,7 +28,7 @@ export default function JoinGroupPage() {
         <ArrowLeftIcon className="h-4 w-4" />
         Back
       </Link>
-      <h1 className="text-3xl font-bold tracking-tight text-foreground">Complainathon</h1>
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">Update</h1>
       {ready ? <JoinGroupForm /> : <SpinnerIcon className="h-6 w-6 text-muted" />}
     </main>
   );

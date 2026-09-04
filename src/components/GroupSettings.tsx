@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { CopyIcon, SpinnerIcon, TrashIcon } from "@/components/icons";
+import { CopyIcon, MegaphoneIcon, SpinnerIcon, TrashIcon } from "@/components/icons";
 import type { GroupDTO, GroupMemberDTO } from "@/lib/types";
 
 export function GroupSettings({ groupId }: { groupId: string }) {
@@ -61,6 +61,46 @@ export function GroupSettings({ groupId }: { groupId: string }) {
       setGroup((prev) => (prev ? { ...prev, inviteCode: data.inviteCode } : prev));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't regenerate code");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleToggleAnnounceOnly() {
+    if (!group) return;
+    const next = !group.announceOnly;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await authedFetch(`/api/groups/${groupId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ announceOnly: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "Couldn't update announcement mode");
+      setGroup((prev) => (prev ? { ...prev, announceOnly: data.announceOnly } : prev));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't update announcement mode");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSetAnnouncer(userId: string, makeAnnouncer: boolean) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await authedFetch(`/api/groups/${groupId}/members/${userId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ role: makeAnnouncer ? "ANNOUNCER" : "MEMBER" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "Couldn't update member role");
+      setMembers((prev) =>
+        prev?.map((m) => (m.userId === userId ? { ...m, role: data.role } : m)) ?? prev,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't update member role");
     } finally {
       setBusy(false);
     }
@@ -168,6 +208,40 @@ export function GroupSettings({ groupId }: { groupId: string }) {
         </section>
       )}
 
+      {isOwner && (
+        <section className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <MegaphoneIcon className="h-4 w-4 text-muted" />
+                Announcement mode
+              </h2>
+              <p className="mt-1 text-xs text-muted">
+                When on, only you and members you make announcers can post — everyone else can
+                only view the feed.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={group.announceOnly}
+              aria-label="Toggle announcement mode"
+              onClick={handleToggleAnnounceOnly}
+              disabled={busy}
+              className={`cursor-pointer relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-50 ${
+                group.announceOnly ? "bg-primary" : "bg-border"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-background transition-transform duration-200 ${
+                  group.announceOnly ? "translate-x-5" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+        </section>
+      )}
+
       <section className="rounded-xl border border-border bg-card p-4">
         <h2 className="text-sm font-semibold text-foreground">Members</h2>
         <ul className="mt-2 space-y-1">
@@ -176,17 +250,30 @@ export function GroupSettings({ groupId }: { groupId: string }) {
               <span className="truncate text-sm text-foreground">
                 {member.username}
                 {member.role === "OWNER" && <span className="ml-2 text-xs text-muted">Owner</span>}
+                {member.role === "ANNOUNCER" && (
+                  <span className="ml-2 text-xs text-muted">Announcer</span>
+                )}
               </span>
               {isOwner && member.userId !== user?.uid && (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveMember(member.userId)}
-                  disabled={busy}
-                  aria-label={`Remove ${member.username}`}
-                  className="cursor-pointer inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-danger/10 hover:text-danger transition-colors duration-200 disabled:opacity-50"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleSetAnnouncer(member.userId, member.role !== "ANNOUNCER")}
+                    disabled={busy}
+                    className="cursor-pointer rounded-lg border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-border/40 transition-colors duration-200 disabled:opacity-50"
+                  >
+                    {member.role === "ANNOUNCER" ? "Remove announcer" : "Make announcer"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveMember(member.userId)}
+                    disabled={busy}
+                    aria-label={`Remove ${member.username}`}
+                    className="cursor-pointer inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-danger/10 hover:text-danger transition-colors duration-200 disabled:opacity-50"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
+                </div>
               )}
             </li>
           ))}

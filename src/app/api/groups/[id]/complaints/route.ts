@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser, AuthError } from "@/lib/auth-server";
-import { requireMembership, GroupAccessError } from "@/lib/groups";
+import { requireMembership, requireCanPost, GroupAccessError } from "@/lib/groups";
 import { parseComplaintBody } from "@/lib/validation";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const user = await requireUser(req);
     const { id } = await params;
 
-    await requireMembership(id, user.uid);
+    await requireCanPost(id, user.uid);
 
     const profile = await prisma.user.findUnique({ where: { id: user.uid } });
     if (!profile) {

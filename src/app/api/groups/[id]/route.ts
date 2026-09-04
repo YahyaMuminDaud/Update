@@ -22,8 +22,35 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         name: group.name,
         role: membership.role,
         inviteCode: membership.role === "OWNER" ? group.inviteCode : null,
+        announceOnly: group.announceOnly,
       },
     });
+  } catch (error) {
+    if (error instanceof AuthError || error instanceof GroupAccessError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+}
+
+export async function PATCH(req: NextRequest, { params }: RouteParams) {
+  try {
+    const user = await requireUser(req);
+    const { id } = await params;
+
+    await requireOwner(id, user.uid);
+
+    const payload = await req.json();
+    if (typeof payload?.announceOnly !== "boolean") {
+      return NextResponse.json({ error: "announceOnly must be a boolean" }, { status: 400 });
+    }
+
+    const group = await prisma.group.update({
+      where: { id },
+      data: { announceOnly: payload.announceOnly },
+    });
+
+    return NextResponse.json({ announceOnly: group.announceOnly });
   } catch (error) {
     if (error instanceof AuthError || error instanceof GroupAccessError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

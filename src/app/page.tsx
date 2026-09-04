@@ -18,7 +18,7 @@ export default function Home() {
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-8 px-4">
-      <h1 className="text-3xl font-bold tracking-tight text-foreground">Complainathon</h1>
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">Update</h1>
 
       {loading || (user && !usernameChecked) || (user && username) ? (
         <SpinnerIcon className="h-6 w-6 text-muted" />

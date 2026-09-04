@@ -5,7 +5,13 @@ import { useAuth } from "@/components/AuthProvider";
 import { COMPLAINT_MAX_LENGTH } from "@/lib/validation";
 import { MegaphoneIcon, SpinnerIcon } from "@/components/icons";
 
-export function ComposeBox({ onPost }: { onPost: (body: string) => Promise<void> }) {
+export function ComposeBox({
+  onPost,
+  canPost = true,
+}: {
+  onPost: (body: string) => Promise<void>;
+  canPost?: boolean;
+}) {
   const { user, loading, usernameChecked, signInWithGoogle } = useAuth();
   const [value, setValue] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -45,6 +51,17 @@ export function ComposeBox({ onPost }: { onPost: (body: string) => Promise<void>
         >
           Sign in with Google
         </button>
+      </div>
+    );
+  }
+
+  if (!canPost) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-6 text-center">
+        <MegaphoneIcon className="mx-auto h-6 w-6 text-muted" />
+        <p className="mt-2 text-sm text-muted">
+          This group is in announcement mode — only the owner and announcers can post.
+        </p>
       </div>
     );
   }

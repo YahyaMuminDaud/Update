@@ -17,7 +17,15 @@ async function readError(res: Response): Promise<string> {
   }
 }
 
-export function ComplaintFeed({ groupId, onForbidden }: { groupId: string; onForbidden?: () => void }) {
+export function ComplaintFeed({
+  groupId,
+  canPost = true,
+  onForbidden,
+}: {
+  groupId: string;
+  canPost?: boolean;
+  onForbidden?: () => void;
+}) {
   const { getToken } = useAuth();
   const [complaints, setComplaints] = useState<ComplaintDTO[] | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
@@ -91,7 +99,7 @@ export function ComplaintFeed({ groupId, onForbidden }: { groupId: string; onFor
 
   return (
     <div className="space-y-4">
-      <ComposeBox onPost={handlePost} />
+      <ComposeBox onPost={handlePost} canPost={canPost} />
 
       {banner && (
         <div

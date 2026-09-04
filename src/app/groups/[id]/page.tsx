@@ -60,7 +60,11 @@ export default function GroupFeedPage() {
     <>
       <GroupHeader groupId={id} groupName={group.name} />
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">
-        <ComplaintFeed groupId={id} onForbidden={() => setForbidden(true)} />
+        <ComplaintFeed
+          groupId={id}
+          canPost={group.role !== "MEMBER" || !group.announceOnly}
+          onForbidden={() => setForbidden(true)}
+        />
       </main>
     </>
   );

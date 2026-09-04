@@ -8,15 +8,18 @@ export type ComplaintDTO = {
   updatedAt: string;
 };
 
+export type GroupRole = "OWNER" | "ANNOUNCER" | "MEMBER";
+
 export type GroupDTO = {
   id: string;
   name: string;
-  role: "OWNER" | "MEMBER";
+  role: GroupRole;
   inviteCode?: string | null;
+  announceOnly: boolean;
 };
 
 export type GroupMemberDTO = {
   userId: string;
   username: string;
-  role: "OWNER" | "MEMBER";
+  role: GroupRole;
 };

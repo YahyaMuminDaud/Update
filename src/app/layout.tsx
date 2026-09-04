@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Complainathon — Say what's bugging you",
+  title: "Update — Say what's bugging you",
   description: "Small group feeds for short complaints and updates, sorted by most recent.",
 };
 
